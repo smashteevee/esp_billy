@@ -6,7 +6,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-// HARDCODE TO START
+// HARDCODE TO START TODO: REMOVE
 
 const char* ssid = "shanghaischav";
 const char* password = "jujujuju";
