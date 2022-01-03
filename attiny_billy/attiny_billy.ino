@@ -160,14 +160,14 @@ void loop() {
 
     // TODO: PUT ESP BILLY TO SLEEP after getting some response
 
-    delay(1000);
+    delay(4000);
 
     // POWER OFF ESP BILLY
   
     PORTB &= ~(1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin LOW to turn off
     DDRB &= ~(1 << MOSFET_GATE_PIN);   // Set MOSFET GATE PIN AS INPUT
     Serial.print("sleep billy!`");
-    delay(1000);
+    delay(500);
     watchdog_counter = 0;  // reset watchdog sleep counter
     detectedRecentActivity = false; // reset detection flag
   
