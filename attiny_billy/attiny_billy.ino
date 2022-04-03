@@ -1,3 +1,4 @@
+
 /*
 * Attiny85 code to read rising PIR sensor events, save it and periodically send updates via ESP8266 (ESP Billy)
  * via Software serial pins
@@ -11,17 +12,28 @@
 
 //#define DEBUG
 //#include "DebugMacros.h"
-int state = LOW;             // by default, no motion detected
 volatile bool readVoltage = false;
-int val = 0; 
-float voltage = 0.0;
-int detectedRecentActivity = false;
+
+bool detectedRecentActivity = false; // motion detection
 volatile int watchdog_counter = 0;
 // ATTIny85 Pins per https://github.com/SpenceKonde/ATTinyCore/blob/master/avr/extras/ATtiny_x5.md
-const int MOSFET_GATE_PIN = PIN_B3;
+
+// RIGHT_SIDE PINS
+// - VCC
+const int PIR_PIN = A1; // - A1/PB2
+// PB1 (unused)
+// PB0 (TX)
+
+// LEFT SIDE PINS
+// PB5 (unused)
+// PB3 (unused)
+const int MOSFET_GATE_PIN = PIN_B4; // PB4
+// GND
 
 
-//SystemStatus sys = SystemStatus();
+
+SystemStatus sys = SystemStatus();
+const int CUTOFF_VOLTAGE =  3600; // // 𝑉𝑐𝑢𝑡𝑜𝑓𝑓 =1.2𝑉(𝑁𝑐𝑒𝑙𝑙𝑠−1)
 
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
@@ -101,7 +113,7 @@ void setup() {
   PORTB &= ~(1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin LOW to turn off Supply
 
   Serial.begin(115200);  // Begin serial communication with ESP
-  pinMode(A1, INPUT);    // read in PIR
+  pinMode(PIR_PIN, INPUT);    // read in PIR
 
   //Serial.write("Hello, from Tiny Billy.");
   // Setup PCI
@@ -110,67 +122,77 @@ void setup() {
 }
 
 void loop() {
+  
+  int analogValue = 0;
   // read any serial response from ESP Billy
   /*if (Serial.available()) {
     int inByte = Serial.read();
     Serial1.write(inByte);
   }*/
-  Serial.print("watchdog_counter:");
-  Serial.println(watchdog_counter);
 
-  // If awake because of PCI, take note if rising/high voltage
-  if (readVoltage) {
-    readVoltage = false;  // reset flag
-    Serial.println("reading voltage");
-    // Only bother taking note if we hadnt previously detected recent activity
-    if (!detectedRecentActivity) {
+  // Check Billy VCC to see if we are good to operate, otherwise back to sleep
+  long vcc= sys.getVCC(); // TODO: Consider checking only every few wakeups
 
-      Serial.println("recently new activity");
-      val = analogRead(A1);  // read sensor value
+  Serial.print("; vcc: ");
+   if (vcc > CUTOFF_VOLTAGE) {
+      Serial.print("watchdog_counter:");
+      Serial.print(watchdog_counter);
+      
+      Serial.println(vcc);
+      // If awake because of PCI, take note if rising/high voltage
+      if (readVoltage) {
+        readVoltage = false;  // reset flag
+        Serial.println("reading voltage");
+        // Only bother taking note if we hadnt previously detected recent activity
+        if (!detectedRecentActivity) {
 
-      // Only bother taking note if rising edge (PIR activated)
-      if (val > 512) {
-        Serial.println("high detected");
-        // Take note that we've detected recent activity
-        detectedRecentActivity = true;
+          Serial.println("recently new activity");
+          analogValue = analogRead(PIR_PIN);  // read sensor value
+          Serial.print("analogValue: ");
+          Serial.println(analogValue);
+          // Only bother taking note if rising edge (PIR activated)
+          if (analogValue > 300) { // TODO make this dynamic; supposed to be 419>
+            Serial.println("high detected");
+        
+            // Take note that we've detected recent activity
+            detectedRecentActivity = true;
 
-        // calculate voltage too
-        voltage = val * (5.0 / 1023);
+          }
+        }
+      } else if (watchdog_counter > 30) { // ~else if awake because it's time to transmit update to ESP Billy
+      
+        // TODO: PAUSE WDT
+        // POWER ON ESP BILLY
+        DDRB |= (1 << MOSFET_GATE_PIN);   // Set Gate Pin as Output
+        PORTB |= (1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin HIGH 
+
+        // TODO: WAIT FOR READY THEN SEND instead of HARDCODE 10s
+        delay(10000);
+
+        /*if (!detectedRecentActivity) {
+          detectedMotion = 0;
+          voltage = 0;
+        }*/
+        // Send info over Serial to ESP Billy
+        Serial.print("detectedMotion: ");
+        Serial.print(detectedRecentActivity);
+        Serial.print(", voltage:");
+        Serial.println(vcc);
+
+        // TODO: PUT ESP BILLY TO SLEEP after getting some response
+
+        delay(4000);
+
+        // POWER OFF ESP BILLY
+      
+        PORTB &= ~(1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin LOW to turn off
+        DDRB &= ~(1 << MOSFET_GATE_PIN);   // Set MOSFET GATE PIN AS INPUT
+        Serial.print("sleep billy!`");
+        delay(500);
+        watchdog_counter = 0;  // reset watchdog sleep counter
+        detectedRecentActivity = false; // reset detection flag
+      
       }
-    }
-  } else if (watchdog_counter > 30) { // ~else if awake because it's time to transmit update to ESP Billy
-  
-    // TODO: PAUSE WDT
-    // POWER ON ESP BILLY
-    DDRB |= (1 << MOSFET_GATE_PIN);   // Set Gate Pin as Output
-    PORTB |= (1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin HIGH 
-
-    // TODO: WAIT FOR READY THEN SEND
-    delay(10000);
-
-    if (!detectedRecentActivity) {
-      val = 0;
-      voltage = 0;
-    }
-    // Send info over Serial to ESP Billy
-    Serial.print("data update: ");
-    Serial.print(val);
-    Serial.print(", voltage:");
-    Serial.println(voltage);
-
-    // TODO: PUT ESP BILLY TO SLEEP after getting some response
-
-    delay(4000);
-
-    // POWER OFF ESP BILLY
-  
-    PORTB &= ~(1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin LOW to turn off
-    DDRB &= ~(1 << MOSFET_GATE_PIN);   // Set MOSFET GATE PIN AS INPUT
-    Serial.print("sleep billy!`");
-    delay(500);
-    watchdog_counter = 0;  // reset watchdog sleep counter
-    detectedRecentActivity = false; // reset detection flag
-  
-  }
+   }
   sleepNow();  // ZZZ until PCI or time to send upate
 }
