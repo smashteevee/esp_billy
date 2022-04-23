@@ -8,7 +8,7 @@
 
 // HARDCODE TO START TODO: REMOVE
 
-const char* ssid = "shanghaischav";
+const char* ssid = "shanghaischav";  // TODO: REPLACE WITH WIFI MANAGER
 const char* password = "jujujuju";
 const char* mqtt_server = "192.168.86.230";
 const char* mqtt_username = "mqtt_client";

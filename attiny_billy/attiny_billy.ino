@@ -1,4 +1,5 @@
 
+
 /*
 * Attiny85 code to read rising PIR sensor events, save it and periodically send updates via ESP8266 (ESP Billy)
  * via Software serial pins
@@ -8,6 +9,7 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/power.h>
+#include <avr/wdt.h>
 #include "SystemStatus.h"
 
 //#define DEBUG
@@ -33,8 +35,8 @@ const int MOSFET_GATE_PIN = PIN_B4; // PB4
 
 
 SystemStatus sys = SystemStatus();
-const int CUTOFF_VOLTAGE =  3600; // // 𝑉𝑐𝑢𝑡𝑜𝑓𝑓 =1.2𝑉(𝑁𝑐𝑒𝑙𝑙𝑠−1)
-
+const int CUTOFF_VOLTAGE =  3200; // Roughly 0.9v/cell for nimh * 4; but because LDO drops to 3.3, we will cutoff only below 3.2
+const int WAKE_FREQUENCY_PERIODS = 150;// 20min *60s = 1200 / 8s wakes = 
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
 //6=1sec, 7=2sec, 8=4sec, 9=8sec
@@ -67,7 +69,8 @@ static inline void initInterrupt(void)
 * WDT interrupt
 */
 ISR(WDT_vect) {
-  watchdog_counter++; // incrementa wdt counter
+  wdt_disable();  // disable watchdog
+  watchdog_counter++; // increment wdt counter
 }
 
 /*
@@ -89,11 +92,13 @@ void sleepNow() {
   // disable ADC
   ADCSRA &= ~(1<<ADEN);
   power_adc_disable();
-  // Watchdog 1 seconds
-  setup_watchdog(6);  
+  // Watchdog wake every 8 seconds
+  setup_watchdog(9);  
   
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // Set sleep mode
   sleep_enable();                        // Enables the sleep bit in the mcucr register so sleep is possible
+
+  //interrupts ();
 
   sleep_cpu();                          // Zzzzzzzzzz...
 
@@ -117,6 +122,7 @@ void setup() {
 
   //Serial.write("Hello, from Tiny Billy.");
   // Setup PCI
+  //pinMode( PIN_PB2, INPUT ); // SEE IF THIS HELPS
   initInterrupt();
 
 }
@@ -133,12 +139,18 @@ void loop() {
   // Check Billy VCC to see if we are good to operate, otherwise back to sleep
   long vcc= sys.getVCC(); // TODO: Consider checking only every few wakeups
 
-  Serial.print("; vcc: ");
    if (vcc > CUTOFF_VOLTAGE) {
       Serial.print("watchdog_counter:");
       Serial.print(watchdog_counter);
       
-      Serial.println(vcc);
+      Serial.print("; vcc: ");
+      Serial.print(vcc);
+
+      // get temperature 
+      int temperature = sys.getTemperatureInternal();
+      Serial.print("; temp:");
+      Serial.println(temperature);
+
       // If awake because of PCI, take note if rising/high voltage
       if (readVoltage) {
         readVoltage = false;  // reset flag
@@ -159,7 +171,7 @@ void loop() {
 
           }
         }
-      } else if (watchdog_counter > 30) { // ~else if awake because it's time to transmit update to ESP Billy
+      } else if (watchdog_counter > WAKE_FREQUENCY_PERIODS) { // ~else if awake because it's time to transmit update to ESP Billy
       
         // TODO: PAUSE WDT
         // POWER ON ESP BILLY
@@ -174,10 +186,12 @@ void loop() {
           voltage = 0;
         }*/
         // Send info over Serial to ESP Billy
-        Serial.print("detectedMotion: ");
+        Serial.print("detectedMotion:");
         Serial.print(detectedRecentActivity);
         Serial.print(", voltage:");
-        Serial.println(vcc);
+        Serial.print(vcc);
+        Serial.print(", temp:");
+        Serial.println(temperature);
 
         // TODO: PUT ESP BILLY TO SLEEP after getting some response
 
