@@ -10,7 +10,7 @@
 #include <avr/sleep.h>
 #include <avr/power.h>
 #include <avr/wdt.h>
-#include "SystemStatus.h"
+#include "src/SystemStatus.h"
 
 //#define DEBUG
 //#include "DebugMacros.h"
@@ -35,7 +35,9 @@ const int MOSFET_GATE_PIN = PIN_B4; // PB4
 
 
 SystemStatus sys = SystemStatus();
-const int CUTOFF_VOLTAGE =  3200; // Roughly 0.9v/cell for nimh * 4; but because LDO drops to 3.3, we will cutoff only below 3.2
+const int CUTOFF_VOLTAGE =  3200; // Roughly 0.9v/cell for nimh * 4; but 
+//because LDO drops to 3.3, we will cutoff only below 3.2
+const int BGV = 1058; // TODO: READ FROM EEPROM
 const int WAKE_FREQUENCY_PERIODS = 150;// 20min *60s = 1200 / 8s wakes = 
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
@@ -137,7 +139,7 @@ void loop() {
   }*/
 
   // Check Billy VCC to see if we are good to operate, otherwise back to sleep
-  long vcc= sys.getVCC(); // TODO: Consider checking only every few wakeups
+  long vcc= sys.getVCC(BGV) * 1000; // TODO: Consider checking only every few wakeups
 
    if (vcc > CUTOFF_VOLTAGE) {
       Serial.print("watchdog_counter:");
@@ -146,10 +148,7 @@ void loop() {
       Serial.print("; vcc: ");
       Serial.print(vcc);
 
-      // get temperature 
-      int temperature = sys.getTemperatureInternal();
-      Serial.print("; temp:");
-      Serial.println(temperature);
+   
 
       // If awake because of PCI, take note if rising/high voltage
       if (readVoltage) {
@@ -172,6 +171,9 @@ void loop() {
           }
         }
       } else if (watchdog_counter > WAKE_FREQUENCY_PERIODS) { // ~else if awake because it's time to transmit update to ESP Billy
+
+      // Get temperature
+      int temperature = sys.getChipTemperatureCelsius(BGV);
       
         // TODO: PAUSE WDT
         // POWER ON ESP BILLY
