@@ -10,6 +10,7 @@
 #include <avr/sleep.h>
 #include <avr/power.h>
 #include <avr/wdt.h>
+#include <EEPROM.h>
 #include "src/SystemStatus.h"
 
 //#define DEBUG
@@ -35,9 +36,12 @@ const int MOSFET_GATE_PIN = PIN_B4; // PB4
 
 
 SystemStatus sys = SystemStatus();
-const int CUTOFF_VOLTAGE =  3200; // Roughly 0.9v/cell for nimh * 4; but 
-//because LDO drops to 3.3, we will cutoff only below 3.2
-const int BGV = 1058; // TODO: READ FROM EEPROM
+const int CUTOFF_VOLTAGE =  3000; // Roughly 0.9v/cell for nimh * 4; but 
+//because LDO drops to 3.3, and VCC reading is not accurate, we set lower when sag
+unsigned long int voltageReference = 0; // TO READ Calibrated VRef FROM EEPROM
+// Varibales for  EEPROM
+int hiByte;      
+int loByte;
 const int WAKE_FREQUENCY_PERIODS = 150;// 20min *60s = 1200 / 8s wakes = 
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
@@ -115,12 +119,19 @@ void sleepNow() {
 
 void setup() {
 
-
+  
   DDRB &= ~(1 << MOSFET_GATE_PIN);   // Set MOSFET GATE PIN AS INPUT
   PORTB &= ~(1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin LOW to turn off Supply
 
   Serial.begin(115200);  // Begin serial communication with ESP
   pinMode(PIR_PIN, INPUT);    // read in PIR
+
+
+  // Read in the previously calibrated VRef
+  delay(100);
+  hiByte = EEPROM.read(126);
+  loByte = EEPROM.read(127);
+  voltageReference = (hiByte << 8) + loByte;  
 
   //Serial.write("Hello, from Tiny Billy.");
   // Setup PCI
@@ -139,14 +150,16 @@ void loop() {
   }*/
 
   // Check Billy VCC to see if we are good to operate, otherwise back to sleep
-  long vcc= sys.getVCC(BGV) * 1000; // TODO: Consider checking only every few wakeups
+  long vcc= sys.getVCC(voltageReference) * 1000; // TODO: Consider checking only every few wakeups
+
+       Serial.print("; vcc: ");
+      Serial.print(vcc);
 
    if (vcc > CUTOFF_VOLTAGE) {
       Serial.print("watchdog_counter:");
       Serial.print(watchdog_counter);
       
-      Serial.print("; vcc: ");
-      Serial.print(vcc);
+ 
 
    
 
@@ -173,7 +186,7 @@ void loop() {
       } else if (watchdog_counter > WAKE_FREQUENCY_PERIODS) { // ~else if awake because it's time to transmit update to ESP Billy
 
       // Get temperature
-      int temperature = sys.getChipTemperatureCelsius(BGV);
+      int temperature = sys.getChipTemperatureCelsius(voltageReference);
       
         // TODO: PAUSE WDT
         // POWER ON ESP BILLY

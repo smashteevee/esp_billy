@@ -145,8 +145,8 @@ int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage) {
 // Calibration of the temperature sensor has to be changed for your own ATtiny85
 // per tech note: http://www.atmel.com/Images/doc8108.pdf
 float SystemStatus::chipTemp(float raw) {
-  const float chipTempOffset = 258.9;           // Your value here, it may vary 
-  const float chipTempCoeff = 0.89;            // Your value here, it may vary
+  const float chipTempOffset = 255.5;           // Your value here, it may vary 
+  const float chipTempCoeff = 0.85;            // Your value here, it may vary
   return((raw - chipTempOffset) / chipTempCoeff);
 }
 
