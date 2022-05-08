@@ -10,6 +10,11 @@
 
 const char* ssid = "shanghaischav";  // TODO: REPLACE WITH WIFI MANAGER
 const char* password = "jujujuju";
+//  Static IP address
+IPAddress local_IP(192, 168, 86, 29);
+// Set your Gateway IP address
+IPAddress gateway(192, 168, 86, 1);
+IPAddress subnet(255, 255, 255, 0);
 const char* mqtt_server = "192.168.86.230";
 const char* mqtt_username = "mqtt_client";
 const char* mqtt_password = "Mqtt3dl3p";
@@ -32,6 +37,11 @@ void setup_wifi() {
   Serial.print("Billy Connecting to ");
   Serial.println(ssid);
 
+  // Configures static IP address
+  if (!WiFi.config(local_IP, gateway, subnet)) {
+    Serial.println("STA Failed to configure");
+  }
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
@@ -42,7 +52,7 @@ void setup_wifi() {
   connectedTime = millis() - startTime;
 
   randomSeed(micros());
-  Serial.print("Connected in: "); Serial.println(connectedTime);
+  Serial.print("Connected in: "); Serial.println(connectedTime);  // Typical time = 6200 ms (DHCP)
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
