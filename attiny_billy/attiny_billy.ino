@@ -38,11 +38,10 @@ const int MOSFET_GATE_PIN = PIN_B4; // PB4
 SystemStatus sys = SystemStatus();
 const int CUTOFF_VOLTAGE =  3000; // Roughly 0.9v/cell for nimh * 4; but 
 //because LDO drops to 3.3, and VCC reading is not accurate, we set lower when sag
-unsigned long int voltageReference = 0; // TO READ Calibrated VRef FROM EEPROM
-// Varibales for  EEPROM
-int hiByte;      
-int loByte;
-const int WAKE_FREQUENCY_PERIODS = 150;// 20min *60s = 1200 / 8s wakes = 
+unsigned long int bandgapVoltage = 0L; // TO READ Calibrated VRef FROM EEPROM
+float tempOffset = -1.46; // TO READ FROM EEPROM TODO:
+const int WAKE_FREQUENCY_PERIODS = 3;//150;// 20min *60s = 1200 / 8s wakes = 
+
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
 //6=1sec, 7=2sec, 8=4sec, 9=8sec
@@ -71,10 +70,20 @@ static inline void initInterrupt(void)
 	sei();                  // enable interrupts
 }
 
+// this function replaces wdt_disable()
+void wdt_off() {
+  wdt_reset();
+  MCUSR = 0x00;
+  WDTCR |= (1<<WDCE) | (1<<WDE);
+  WDTCR = 0x00;
+}
+
 /*
 * WDT interrupt
 */
 ISR(WDT_vect) {
+  Serial.println("WDT Wokeup!");
+  //wdt_off();
   wdt_disable();  // disable watchdog
   watchdog_counter++; // increment wdt counter
 }
@@ -127,13 +136,23 @@ void setup() {
   pinMode(PIR_PIN, INPUT);    // read in PIR
 
 
-  // Read in the previously calibrated VRef
-  delay(100);
-  hiByte = EEPROM.read(126);
-  loByte = EEPROM.read(127);
-  voltageReference = (hiByte << 8) + loByte;  
+  // Read in the previously calibrated Bandgap 1v1
+  delay(1000);
 
-  //Serial.write("Hello, from Tiny Billy.");
+  // Read in the last calibrated 1v1 from EEPROM
+  EEPROM.get(15, bandgapVoltage);  
+
+  //Read first EEPROM cell.
+  Serial.print("EEPROM[15] = "); Serial.println(EEPROM[15]);
+  Serial.print("EEPROM[16] = "); Serial.println(EEPROM[16]);
+  Serial.print("EEPROM[17] = "); Serial.println(EEPROM[17]);
+  Serial.print("EEPROM[18] = "); Serial.println(EEPROM[18]);
+
+
+
+
+  Serial.print("Starting up...bandgapVoltage = ");
+  Serial.println(bandgapVoltage);
   // Setup PCI
   //pinMode( PIN_PB2, INPUT ); // SEE IF THIS HELPS
   initInterrupt();
@@ -150,7 +169,7 @@ void loop() {
   }*/
 
   // Check Billy VCC to see if we are good to operate, otherwise back to sleep
-  long vcc= sys.getVCC(voltageReference) * 1000; // TODO: Consider checking only every few wakeups
+  long vcc= sys.getVCC(bandgapVoltage) * 1000; // TODO: Consider checking only every few wakeups
 
        Serial.print("; vcc: ");
       Serial.print(vcc);
@@ -159,8 +178,8 @@ void loop() {
       Serial.print("watchdog_counter:");
       Serial.print(watchdog_counter);
       
- 
 
+      
    
 
       // If awake because of PCI, take note if rising/high voltage
@@ -186,16 +205,25 @@ void loop() {
       } else if (watchdog_counter > WAKE_FREQUENCY_PERIODS) { // ~else if awake because it's time to transmit update to ESP Billy
 
       // Get temperature
-      int temperature = sys.getChipTemperatureCelsius(voltageReference);
-      
+      //int temperature = 22;
+      wdt_reset();
+      int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset, vcc);
+       // int temperature = sys.getTemperatureInternal(tempOffset);
+      Serial.println("Got temp");
+      wdt_reset();
         // TODO: PAUSE WDT
         // POWER ON ESP BILLY
         DDRB |= (1 << MOSFET_GATE_PIN);   // Set Gate Pin as Output
         PORTB |= (1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin HIGH 
-
+       // Serial.println("Mosfet GATE ON");
         // TODO: WAIT FOR READY THEN SEND instead of HARDCODE 10s
-        delay(10000);
-
+        //delay(10000);
+        // TODO: Replace with loop and reset the WDT
+        wdt_reset();
+        delay(3000);
+        wdt_reset();
+        delay(4000);
+        wdt_reset();
         /*if (!detectedRecentActivity) {
           detectedMotion = 0;
           voltage = 0;
@@ -209,11 +237,11 @@ void loop() {
         Serial.println(temperature);
 
         // TODO: PUT ESP BILLY TO SLEEP after getting some response
-
+          wdt_reset();
         delay(4000);
 
         // POWER OFF ESP BILLY
-      
+       // Serial.println("Power off mosfet");
         PORTB &= ~(1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin LOW to turn off
         DDRB &= ~(1 << MOSFET_GATE_PIN);   // Set MOSFET GATE PIN AS INPUT
         Serial.print("sleep billy!`");

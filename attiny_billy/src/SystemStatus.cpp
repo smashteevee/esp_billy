@@ -38,7 +38,7 @@ SystemStatus::SystemStatus() : pin_batt(255) {
 
 float SystemStatus::getVCC(int bandgap_voltage) {
   //reads internal 1V1 reference against VCC
- /* #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
+  /*#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
     ADMUX = _BV(MUX5) | _BV(MUX0); // For ATtiny84
   #elif defined(__AVR_ATtiny85__) || defined(__AVR_ATtiny45__)
     ADMUX = _BV(MUX3) | _BV(MUX2); // For ATtiny85/45
@@ -59,12 +59,12 @@ float SystemStatus::getVCC(int bandgap_voltage) {
   low = ADCL;
   val = (ADCH << 8) | low;
   
-  return ((long)1024 * bandgap_voltage) / val;  
-*/
+  return ((long)1024 * bandgap_voltage) / val;  */
+
  // Measure chip voltage (Vcc)
  float rawVcc;
   ADCSRA |= _BV(ADEN);   // Enable ADC
-  ADMUX  = 0x0c | _BV(REFS2);    // Use Vcc as voltage reference, 
+  ADMUX  = 0x0c; //| _BV(REFS2);    // Use Vcc as voltage reference, 
                                  //    bandgap reference as ADC input
   delay(SETTLE);                    // Settling time min 1 ms, there is 
                                  //    time so wait 100 ms
@@ -111,11 +111,11 @@ int SystemStatus::getMHz() {
 }
 
 // From: http://21stdigitalhome.blogspot.com/2014/10/trinket-attiny85-internal-temperature.html
-int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage) {
+int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage, float offset = 0, int vcc_voltage = 0) {
   int i;
   int t_celsius; 
   uint8_t vccIndex;
-  float rawTemp, rawVcc;
+  float rawTemp;
   
   // Measure temperature
   ADCSRA |= _BV(ADEN);           // Enable AD and start conversion
@@ -123,30 +123,36 @@ int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage) {
   delay(SETTLE);                 // Settling time min 1 ms, wait 100 ms
 
   rawTemp = (float)getADC();     // use next sample as initial average
-  for (int i=2; i<2000; i++) {   // calculate running average for 2000 measurements
+  for (int i=2; i<200; i++) {   // calculate running average for 200 measurements
     rawTemp += ((float)getADC() - rawTemp) / float(i); 
   }  
   ADCSRA &= ~(_BV(ADEN));        // disable ADC  
 
   
-  rawVcc = getVCC(bandgap_voltage);
+  if (!vcc_voltage) {
+    vcc_voltage = getVCC(bandgap_voltage);
+  }
   
 
   //index 0..13 for vcc 1.7 ... 3.0
-  vccIndex = min(max(17,(uint8_t)(rawVcc * 10)),30) - 17;   
+  vccIndex = min(max(17,(uint8_t)(vcc_voltage * 10)),30) - 17;   
 
+    Serial.print("rawTemp (k): ");
+  Serial.println(rawTemp);
   // Temperature compensation using the chip voltage 
   // with 3.0 V VCC is 1 lower than measured with 1.7 V VCC 
-  t_celsius = (int)(chipTemp(rawTemp) + (float)vccIndex / 13);  
+  t_celsius = (int)(chipTemp(rawTemp, offset) + (float)vccIndex / 13);  
                                                                                    
   return t_celsius;
 }
 
 // Calibration of the temperature sensor has to be changed for your own ATtiny85
 // per tech note: http://www.atmel.com/Images/doc8108.pdf
-float SystemStatus::chipTemp(float raw) {
-  const float chipTempOffset = 255.5;           // Your value here, it may vary 
-  const float chipTempCoeff = 0.85;            // Your value here, it may vary
+float SystemStatus::chipTemp(float raw, float offset = 0) {
+  const float chipTempOffset = 273.15 + offset;           // Use offset to adjust
+  const float chipTempCoeff = 0.95;            // Your value here, it may vary
+  Serial.print("Temp w. Offset (C): ");
+  Serial.println(raw - chipTempOffset);
   return((raw - chipTempOffset) / chipTempCoeff);
 }
 
@@ -187,8 +193,9 @@ int8_t SystemStatus::getTemperatureInternal(uint8_t offset) {
 	low  = ADCL;
 	high = ADCH;
 	int a = (high << 8) | low;
-  return chipTemp(a); //return temperature in C
-  //return a - 272; 
+  Serial.print("raw temp: ");
+  Serial.println(a);
+  return chipTemp(a, offset); 
 }
 
 
