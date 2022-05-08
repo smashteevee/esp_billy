@@ -208,12 +208,14 @@ void loop() {
       //int temperature = 22;
       wdt_reset();
       int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset, vcc);
+      wdt_reset();
        // int temperature = sys.getTemperatureInternal(tempOffset);
       Serial.println("Got temp");
-      wdt_reset();
+      
         // TODO: PAUSE WDT
         // POWER ON ESP BILLY
         DDRB |= (1 << MOSFET_GATE_PIN);   // Set Gate Pin as Output
+        wdt_reset();
         PORTB |= (1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin HIGH 
        // Serial.println("Mosfet GATE ON");
         // TODO: WAIT FOR READY THEN SEND instead of HARDCODE 10s

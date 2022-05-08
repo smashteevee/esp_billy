@@ -22,9 +22,10 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE	(50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
+long startTime = 0;
 
 void setup_wifi() {
-
+  long connectedTime;
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
@@ -38,9 +39,10 @@ void setup_wifi() {
     delay(500);
     Serial.print("."); Serial.println(WiFi.status());
   }
+  connectedTime = millis() - startTime;
 
   randomSeed(micros());
-
+  Serial.print("Connected in: "); Serial.println(connectedTime);
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
@@ -94,6 +96,7 @@ void reconnect() {
 void setup() {
   //pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   Serial.begin(115200);
+  startTime = millis();
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
