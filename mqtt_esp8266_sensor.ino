@@ -3,13 +3,14 @@
  Basic MQTT pub functionality based on Serial messages sent from Attiny85 Billy
 */
 
-#include <ESP8266WiFi.h>
+//#include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <WiFiManager.h>
 
 // HARDCODE TO START TODO: REMOVE
 
-const char* ssid = "shanghaischav";  // TODO: REPLACE WITH WIFI MANAGER
-const char* password = "jujujuju";
+//const char* ssid = "shanghaischav";  // TODO: REPLACE WITH WIFI MANAGER
+//const char* password = "jujujuju";
 //  Static IP address
 IPAddress local_IP(192, 168, 86, 29);
 // Set your Gateway IP address
@@ -24,7 +25,7 @@ const char* detectedFalse = "false";
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
-#define MSG_BUFFER_SIZE	(50)
+#define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
 long startTime = 0;
@@ -34,29 +35,50 @@ void setup_wifi() {
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
-  Serial.print("Billy Connecting to ");
-  Serial.println(ssid);
+  Serial.print("Billy Connecting... ");
+  //Serial.println(ssid);
 
   // Configures static IP address
-  if (!WiFi.config(local_IP, gateway, subnet)) {
+  /*if (!WiFi.config(local_IP, gateway, subnet)) {
     Serial.println("STA Failed to configure");
-  }
+  }*/
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFiManager wm;
+  //WiFi.begin(ssid, password);
+  // Automatically connect using saved credentials,
+  // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
+  // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
+  // then goes into a blocking loop awaiting configuration and will return success result
 
-  while (WiFi.status() != WL_CONNECTED) {
+  bool res;
+  // res = wm.autoConnect(); // auto generated AP name from chipid
+  // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+  // Set static IP for faster connect time
+  wm.setSTAStaticIPConfig(local_IP, gateway, subnet); // optional DNS 4th argument
+
+  res = wm.autoConnect("AutoConnectAP", "password");  // password protected ap
+  if (!res) {
+    Serial.println("Failed to connect");
+
+  } else {
+    //if you get here you have connected to the WiFi
+    Serial.println("connected...yeey :)");
+    connectedTime = millis() - startTime;
+    randomSeed(micros());
+    Serial.print("Connected in: ");
+    Serial.println(connectedTime);  // Typical time = 6200 ms (DHCP), 4100 ms (static IP), Wifimanger DHCP (2100 MS); Wifi manager static (250 ms)
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+  }
+  /*while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print("."); Serial.println(WiFi.status());
   }
   connectedTime = millis() - startTime;
-
-  randomSeed(micros());
-  Serial.print("Connected in: "); Serial.println(connectedTime);  // Typical time = 6200 ms (DHCP)
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+*/
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -76,7 +98,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else {
     digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
   }*/
-
 }
 
 void reconnect() {
@@ -119,27 +140,23 @@ void loop() {
   }
   client.loop();
 
-// Received command from Tiny Billy
-if (Serial.available()) {
+  // Received command from Tiny Billy
+  if (Serial.available()) {
     Serial.println("received Tiny Billy command");
-   int readLength = Serial.readBytes(msg, MSG_BUFFER_SIZE);
-   /*if (tinyBillyCommand == 1) {
+    int readLength = Serial.readBytes(msg, MSG_BUFFER_SIZE);
+    /*if (tinyBillyCommand == 1) {
      // publish Detect message
      strcpy(msg, "true");
    } else if (!tinyBillyCommand) {
      // publish not detect message
      strcpy(msg, "false");
    }*/
-   client.publish(outTopic, msg);
-  
-}
- /* unsigned long now = millis();
+    client.publish(outTopic, msg);
+  }
+  /* unsigned long now = millis();
   if (now - lastMsg > 2000) {
     lastMsg = now;
     ++value;
     snprintf (msg, MSG_BUFFER_SIZE, "1", value);
     Serial.print("Publish message: ");*/
-    
-    
-  
 }

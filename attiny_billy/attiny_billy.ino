@@ -1,3 +1,6 @@
+#include <WiFiManager.h>
+#include <strings_en.h>
+
 
 
 /*
