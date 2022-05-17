@@ -1,27 +1,24 @@
 /*
  ESP8266 Billy code based off of sample ESP8266 sketch for pubsub function
+ and sample WifiManager code
  Basic MQTT pub functionality based on Serial messages sent from Attiny85 Billy
 */
 
-//#include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiManager.h>
 
-// HARDCODE TO START TODO: REMOVE
 
-//const char* ssid = "shanghaischav";  // TODO: REPLACE WITH WIFI MANAGER
-//const char* password = "jujujuju";
-//  Static IP address
+//  Static IP address TODO: Figure out how to set all below via Wifimanager
 IPAddress local_IP(192, 168, 86, 29);
 // Set your Gateway IP address
 IPAddress gateway(192, 168, 86, 1);
 IPAddress subnet(255, 255, 255, 0);
+
 const char* mqtt_server = "192.168.86.230";
 const char* mqtt_username = "mqtt_client";
 const char* mqtt_password = "Mqtt3dl3p";
 const char* outTopic = "billies/billy1/recent_presence";
-const char* detectedTrue = "true";
-const char* detectedFalse = "false";
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
@@ -30,55 +27,42 @@ char msg[MSG_BUFFER_SIZE];
 int value = 0;
 long startTime = 0;
 
+/*
+ Function to connect to Wifi
+*/
 void setup_wifi() {
   long connectedTime;
-  delay(10);
-  // We start by connecting to a WiFi network
+  
   Serial.println();
   Serial.print("Billy Connecting... ");
-  //Serial.println(ssid);
-
-  // Configures static IP address
-  /*if (!WiFi.config(local_IP, gateway, subnet)) {
-    Serial.println("STA Failed to configure");
-  }*/
-
+  
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
-  //WiFi.begin(ssid, password);
+
+// Set static IP for faster connect time
+  wm.setSTAStaticIPConfig(local_IP, gateway, subnet); // optional DNS 4th argument
+// Setup fast connect mode (https://github.com/tzapu/WiFiManager/tree/feature_fastconnect)
+  wm.setFastConnectMode(true);
   // Automatically connect using saved credentials,
   // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
-  // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
   // then goes into a blocking loop awaiting configuration and will return success result
 
-  bool res;
-  // res = wm.autoConnect(); // auto generated AP name from chipid
-  // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
-  // Set static IP for faster connect time
-  wm.setSTAStaticIPConfig(local_IP, gateway, subnet); // optional DNS 4th argument
-
-  res = wm.autoConnect("AutoConnectAP", "password");  // password protected ap
-  if (!res) {
+  if (!wm.autoConnect("AutoConnectAP", "password")) {
     Serial.println("Failed to connect");
 
   } else {
-    //if you get here you have connected to the WiFi
-    Serial.println("connected...yeey :)");
+    // Connected to the WiFi
+    Serial.println("connected!");
     connectedTime = millis() - startTime;
     randomSeed(micros());
     Serial.print("Connected in: ");
-    Serial.println(connectedTime);  // Typical time = 6200 ms (DHCP), 4100 ms (static IP), Wifimanger DHCP (2100 MS); Wifi manager static (250 ms)
+    Serial.println(connectedTime);  // Typical time = 6200 ms (DHCP), 4100 ms (static IP), Wifimanger DHCP (2100 MS); Wifi manager static (250 ms), fast connect (209 ms)
     Serial.println("");
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
   }
-  /*while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print("."); Serial.println(WiFi.status());
-  }
-  connectedTime = millis() - startTime;
-*/
+  
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -127,8 +111,11 @@ void reconnect() {
 void setup() {
   //pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   Serial.begin(115200);
+  // Track bootup start time
   startTime = millis();
+  // Setup wifi
   setup_wifi();
+  // Setup MQTT pubsub
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 }
