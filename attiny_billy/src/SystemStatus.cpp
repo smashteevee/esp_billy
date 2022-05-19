@@ -111,11 +111,11 @@ int SystemStatus::getMHz() {
 }
 
 // From: http://21stdigitalhome.blogspot.com/2014/10/trinket-attiny85-internal-temperature.html
-int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage, float offset = 0, int vcc_voltage = 0) {
+int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage, float offset = 0) {
   int i;
   int t_celsius; 
   uint8_t vccIndex;
-  float rawTemp;
+  float rawTemp, rawVcc;
   
   // Measure temperature
   ADCSRA |= _BV(ADEN);           // Enable AD and start conversion
@@ -123,19 +123,19 @@ int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage, float offset = 
   delay(SETTLE);                 // Settling time min 1 ms, wait 100 ms
 
   rawTemp = (float)getADC();     // use next sample as initial average
-  for (int i=2; i<200; i++) {   // calculate running average for 200 measurements
+  for (int i=2; i<2000; i++) {   // calculate running average for 2000 measurements
     rawTemp += ((float)getADC() - rawTemp) / float(i); 
   }  
   ADCSRA &= ~(_BV(ADEN));        // disable ADC  
 
   
-  if (!vcc_voltage) {
-    vcc_voltage = getVCC(bandgap_voltage);
-  }
+  
+    rawVcc = getVCC(bandgap_voltage);
+
   
 
   //index 0..13 for vcc 1.7 ... 3.0
-  vccIndex = min(max(17,(uint8_t)(vcc_voltage * 10)),30) - 17;   
+  vccIndex = min(max(17,(uint8_t)(rawVcc * 10)),30) - 17;   
 
     Serial.print("rawTemp (k): ");
   Serial.println(rawTemp);
@@ -150,7 +150,7 @@ int SystemStatus::getChipTemperatureCelsius(int bandgap_voltage, float offset = 
 // per tech note: http://www.atmel.com/Images/doc8108.pdf
 float SystemStatus::chipTemp(float raw, float offset = 0) {
   const float chipTempOffset = 273.15 + offset;           // Use offset to adjust
-  const float chipTempCoeff = 0.95;            // Your value here, it may vary
+  const float chipTempCoeff = 1.15;            // Your value here, it may vary
   Serial.print("Temp w. Offset (C): ");
   Serial.println(raw - chipTempOffset);
   return((raw - chipTempOffset) / chipTempCoeff);

@@ -42,7 +42,7 @@ SystemStatus sys = SystemStatus();
 const int CUTOFF_VOLTAGE =  3000; // Roughly 0.9v/cell for nimh * 4; but 
 //because LDO drops to 3.3, and VCC reading is not accurate, we set lower when sag
 unsigned long int bandgapVoltage = 0L; // TO READ Calibrated VRef FROM EEPROM
-float tempOffset = -1.46; // TO READ FROM EEPROM TODO:
+float tempOffset = -14.75; // TO READ FROM EEPROM TODO:
 const int WAKE_FREQUENCY_PERIODS = 3;//150;// 20min *60s = 1200 / 8s wakes = 
 
 //Sets the watchdog timer to wake us up, but not reset
@@ -210,7 +210,7 @@ void loop() {
       // Get temperature
       //int temperature = 22;
       wdt_reset();
-      int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset, vcc);
+      int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset);
       wdt_reset();
        // int temperature = sys.getTemperatureInternal(tempOffset);
       Serial.println("Got temp");
@@ -225,9 +225,9 @@ void loop() {
         //delay(10000);
         // TODO: Replace with loop and reset the WDT
         wdt_reset();
-        delay(3000);
+        delay(2000);
         wdt_reset();
-        delay(4000);
+        delay(2000);
         wdt_reset();
         /*if (!detectedRecentActivity) {
           detectedMotion = 0;
@@ -242,7 +242,7 @@ void loop() {
         Serial.println(temperature);
 
         // TODO: PUT ESP BILLY TO SLEEP after getting some response
-          wdt_reset();
+        wdt_reset();
         delay(4000);
 
         // POWER OFF ESP BILLY
