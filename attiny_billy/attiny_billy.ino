@@ -218,16 +218,13 @@ void loop() {
         // TODO: PAUSE WDT
         // POWER ON ESP BILLY
         DDRB |= (1 << MOSFET_GATE_PIN);   // Set Gate Pin as Output
-        wdt_reset();
         PORTB |= (1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin HIGH 
        // Serial.println("Mosfet GATE ON");
         // TODO: WAIT FOR READY THEN SEND instead of HARDCODE 10s
         //delay(10000);
         // TODO: Replace with loop and reset the WDT
         wdt_reset();
-        delay(2000);
-        wdt_reset();
-        delay(2000);
+        delay(4000);  // Worse case, ~4s to boot to Wifi
         wdt_reset();
         /*if (!detectedRecentActivity) {
           detectedMotion = 0;
@@ -243,7 +240,7 @@ void loop() {
 
         // TODO: PUT ESP BILLY TO SLEEP after getting some response
         wdt_reset();
-        delay(4000);
+        delay(4000);   // Give some time for ESP Billy to send MQTT
 
         // POWER OFF ESP BILLY
        // Serial.println("Power off mosfet");
