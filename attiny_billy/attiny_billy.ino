@@ -43,7 +43,7 @@ const int CUTOFF_VOLTAGE =  3000; // Roughly 0.9v/cell for nimh * 4; but
 //because LDO drops to 3.3, and VCC reading is not accurate, we set lower when sag
 unsigned long int bandgapVoltage = 0L; // TO READ Calibrated VRef FROM EEPROM
 float tempOffset = -12.75; // Pre-calibrated TODO: read from EEPROM; have found it's hotter here so need to further adjust (larger number, lower temp)
-const int WAKE_FREQUENCY_PERIODS = 150;// 20min *60s = 1200 / 8s wakes = 
+const int WAKE_FREQUENCY_PERIODS = 3;//150;// 20min *60s = 1200 / 8s wakes = 
 
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
@@ -210,7 +210,7 @@ void loop() {
       // Get temperature
       //int temperature = 22;
       wdt_reset();
-      int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset);
+      int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset, vcc);
       wdt_reset();
        // int temperature = sys.getTemperatureInternal(tempOffset);
       Serial.println("Got temp");

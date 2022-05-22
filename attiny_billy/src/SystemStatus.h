@@ -40,7 +40,7 @@ class SystemStatus {
     int getkHz();
     int getMHz();
     int8_t getTemperatureInternal(uint8_t offset);
-    int getChipTemperatureCelsius(int bandgap_voltage, float offset);
+    int getChipTemperatureCelsius(int bandgap_voltage, float offset, int vcc);
   
     
   private:
