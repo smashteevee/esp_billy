@@ -33,6 +33,12 @@ long startTime = 0;
 void setup_wifi() {
   long connectedTime;
   
+  // UNCOMMENT TO ERASE OLD CONFIG - needed for Fast Connect
+/*  WiFi.disconnect(true);
+  ESP.eraseConfig();
+  Serial.println("[INFO] WiFi credentials are erased.");
+*/
+
   Serial.println();
   Serial.print("Billy Connecting... ");
   
