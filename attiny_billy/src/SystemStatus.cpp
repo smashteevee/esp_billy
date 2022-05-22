@@ -162,42 +162,7 @@ int SystemStatus::getADC() {
   return ADC;
 }
 
-int8_t SystemStatus::getTemperatureInternal(uint8_t offset) {
-  /* from the data sheet
-    Temperature / °C -45°C +25°C +85°C
-    Voltage     / mV 242 mV 314 mV 380 mV
-  */
-  //reads internal internal temp with 1V1 reference
-#if defined(__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)  //
-  ADMUX = (1 << REFS1) | (1 << MUX5) | (1 << MUX1);                                      //turn 1.1V reference and select ADC8 For ATtiny84
-#elif (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)       // -40°=230lsb +25°=300lsb +85=370lsb
-  ADMUX = (1 << REFS1) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1) | (1 << MUX0);  //turn 1.1V reference and select ADC4 For ATtiny85
-#elif defined(__AVR_ATmega1284P__)
-  // For ATmega1284 not working
-#else  // -45°=242mV +25=314mV +85°=380mV
-  ADMUX = (1 << REFS0) | (1 << REFS1) | (1 << MUX3);  //turn 1.1V reference and select ADC8  for atmega 328p
-#endif
-  delay(5);  //wait for internal reference to settle
-  // start the conversion
-  ADCSRA |= bit(ADSC);
-  //sbi(ADCSRA, ADSC);
-  // ADSC is cleared when the conversion finishes
-  while (ADCSRA & bit(ADSC))
-    ;
-  //while (bit_is_set(ADCSRA, ADSC));
-  uint8_t low = ADCL;
-  uint8_t high = ADCH;
-  //discard first reading
-  ADCSRA |= bit(ADSC);
-  while (ADCSRA & bit(ADSC))
-    ;
-  low = ADCL;
-  high = ADCH;
-  int a = (high << 8) | low;
-  Serial.print("raw temp: ");
-  Serial.println(a);
-  return chipTemp(a, offset);
-}
+
 
 
 

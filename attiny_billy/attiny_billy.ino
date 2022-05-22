@@ -212,7 +212,6 @@ void loop() {
       wdt_reset();
       int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset, vcc);
       wdt_reset();
-       // int temperature = sys.getTemperatureInternal(tempOffset);
       Serial.println("Got temp");
       
         // TODO: PAUSE WDT
