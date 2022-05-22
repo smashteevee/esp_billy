@@ -208,8 +208,6 @@ void loop() {
       } else if (watchdog_counter > WAKE_FREQUENCY_PERIODS) { // ~else if awake because it's time to transmit update to ESP Billy
 
       // Get temperature
-      //int temperature = 22;
-      wdt_reset();
       int temperature = sys.getChipTemperatureCelsius(bandgapVoltage, tempOffset, vcc);
       wdt_reset();
       Serial.println("Got temp");
@@ -219,16 +217,13 @@ void loop() {
         DDRB |= (1 << MOSFET_GATE_PIN);   // Set Gate Pin as Output
         PORTB |= (1 << MOSFET_GATE_PIN);  // Set Mosfet Gate Pin HIGH 
        // Serial.println("Mosfet GATE ON");
+       
         // TODO: WAIT FOR READY THEN SEND instead of HARDCODE 10s
         //delay(10000);
         // TODO: Replace with loop and reset the WDT
-        wdt_reset();
         delay(4000);  // Worse case, ~4s to boot to Wifi
         wdt_reset();
-        /*if (!detectedRecentActivity) {
-          detectedMotion = 0;
-          voltage = 0;
-        }*/
+        
         // Send info over Serial to ESP Billy
         Serial.print("detectedMotion:");
         Serial.print(detectedRecentActivity);
