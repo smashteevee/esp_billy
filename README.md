@@ -13,4 +13,4 @@ Key Details
  - Low power tricks include sleep and PCI/WDT wake up), mosfet switching off ESP8266, and Fast connect more for WiFi (eg static IP)
  - Can last 4-6 weeks between battery changes using 4 x AAA Nimh 
 
-Read more on the Project Write-up: [TODO](https://www.nyctinker.com/post/attiny85-projects-diy-wireless-room-sensor)https://www.nyctinker.com/post/attiny85-projects-diy-wireless-room-sensor
+Read more on the Project Write-up [here](https://www.nyctinker.com/post/attiny85-projects-diy-wireless-room-sensor)
