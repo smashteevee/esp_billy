@@ -13,6 +13,9 @@ Key Details
  - Low power tricks include Attiny sleep and PCI/WDT wake up, mosfet switching off ESP8266, and [Fastconnect](https://github.com/tzapu/WiFiManager/issues/1342) for reduced WiFi boot time (eg static IP)
  - Can last 4-6 weeks between battery changes using 4 x AAA Nimh
 
+![image](https://github.com/smashteevee/esp_billy/assets/59382083/c5cd4e8d-7e6d-477a-ae7d-e48e43ca56c4)
+
+
 
 BOM
   - 1 x Attiny85
