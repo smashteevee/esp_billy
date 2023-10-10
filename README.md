@@ -1,5 +1,5 @@
 # esp_billy
-## DIY Motion and Temperature sensor using an Attiny85 and ESP8366 (Esp12-e).
+DIY Motion and Temperature sensor using an Attiny85 and ESP8366 (Esp12-e).
 
 ## Key Features
  - Reads PIR sensor output to detect motion
